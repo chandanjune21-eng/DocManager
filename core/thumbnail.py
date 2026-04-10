@@ -7,7 +7,7 @@ class ThumbnailGenerator:
     def generate_thumbnail(self,pdf_path):
         doc = pymupdf.open(pdf_path)
         page = doc.load_page(0)
-        pix = doc.get_pixmap()
+        pix = page.get_pixmap()
 
         base_name = os.path.basename(pdf_path).replace(".pdf", ".png")
 

@@ -29,18 +29,29 @@ with tabs[0]:
     uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
     tags = st.text_input("Tags(comma separated)")
     description = st.text_area("Description")
-    lecture_date = st.date_input("Lecture Date (optional),value=None")
+    lecture_date = st.date_input("Lecture Date (optional)",value=None)
 
 
-if st.button("Upload"):
-    if uploaded_file:
-        Service.upload_document( uploaded_file,tags,description,lecture_date)
+    if st.button("Upload"):
+        if uploaded_file:
+            Service.upload_document( uploaded_file,tags,description,lecture_date)
     else :
         st.error("Please upload a file")
 
 
 with tabs[1]:
-    pass
+    st.header("Search & View")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        search_tag = st.text_input("Search by Tag")
+
+    with col2:
+        search_date = st.date_input("Search by Date",value=None)
+    
+    if st.button("Search"):
+        
 
 with tabs[2]:
     pass

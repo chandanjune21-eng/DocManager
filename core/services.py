@@ -1,6 +1,10 @@
+from datetime import datetime
+
 from db.repository import DocumentRepository
 from core.file_manager import FileManager
 from core.thumbnail import ThumbnailGenerator
+from core.reader import PDFReader
+from core.model import Document
 
 
 
@@ -9,9 +13,10 @@ class DocumentService:
         self.repo = DocumentRepository()
         self.file_manager = FileManager()
         self.thumbnail_generator = ThumbnailGenerator()
+        self.reader = PDFReader()
 
     def upload_document(self, uploaded_file,tags,description,lecture_date=None):
-        doc= []
+    
         # 1. Save file
         file_path = self.file_manager.save_file(uploaded_file)
 
@@ -21,5 +26,26 @@ class DocumentService:
         #3. total pages 
         total_pages = self.thumbnail_generator.get_total_pages(file_path)
 
+        #4. Convert to images
+        self.reader.convert_pdf_to_image(file_path)
 
-        #self.repo.add_document(doc)
+        #5. uploade date time
+
+        upload_date = datetime.now().strftime("%Y-%m-%d")
+
+        doc = Document(
+            id = None,
+            name = uploaded_file.name,
+            path = file_path,
+            thumbnail_path = thumbnail_path,
+            tags = tags,
+            description = description,
+            upload_date = datetime.now().strftime("%Y-%m-%d"),
+            lecture_date = lecture_date,
+            total_pages = total_pages
+        )
+
+    
+
+
+        self.repo.add_document(doc)
