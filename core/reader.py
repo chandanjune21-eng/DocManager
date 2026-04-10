@@ -25,9 +25,9 @@ class PDFReader:
 
             image_paths.append(img_path)
 
-            doc.close()
+        doc.close()
 
-            return image_paths
+        return image_paths
         
 
 

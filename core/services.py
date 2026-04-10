@@ -49,3 +49,6 @@ class DocumentService:
 
 
         self.repo.add_document(doc)
+
+    def search_document(self,tag=None, date= None):
+        return self.repo.search_document(tag,date)
