@@ -36,6 +36,15 @@ def init_db():
         cursor.execute("ALTER TABLE documents ADD COLUMN lecture_date TEXT")
     except sqlite3.OperationalError:
         pass
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS page_visits(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        document_id INTEGER,
+        page_number INTEGER,
+        timestamp TEXT
+    )
+    """)
 
     conn.commit()
     print("DB operation successful")

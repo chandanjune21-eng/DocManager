@@ -9,6 +9,7 @@ sys.path.append(BASE_DIR)
 from db.database import init_db
 
 from core.services import DocumentService
+from core.analytics import AnalyticsServices
 
 
 if "selected_doc" not in st.session_state:
@@ -30,6 +31,7 @@ if "reader_mode" not in st.session_state:
 init_db()
 
 Service = DocumentService()
+analytics = AnalyticsServices()
 
 st.set_page_config(page_title="DocManager",layout="wide")
 
@@ -147,12 +149,28 @@ if st.session_state.reader_mode and st.session_state.get("selected_doc"):
             )
 
             st.image(img_path, width="stretch")
-            st.write(
-                f"Page {st.session_state.current_page + 1} / {total_pages}"
-            )
+
+            # record page visit analytics
+            analytics.record_page_visit(doc.id,st.session_state.current_page)
+
+            unique_pages = analytics.get_unique_page_viewed(doc.id)
+            progress = (unique_pages / doc.total_pages) * 100 if doc.total_pages else 0
+            st.progress(progress/100)
+
+
+
+
+
+            st.write(f"Progress: {progress:.2f}% ({unique_pages}/{doc.total_pages})")
+            
 
         else:
             st.error("No images found")
+
+
+        if st.button("Closer Reader"):
+            st.session_state.reader_mode = False
+
 with tabs[2]:
     pass
 
