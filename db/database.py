@@ -1,14 +1,16 @@
 import sqlite3
 import os
 
-DB_PATH = os.path.join("data", "documents.db")
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DB_PATH = os.path.join(BASE_DIR, "data", "documents.db")
+
 
 def get_connection():
     print("Using DB PATH:", DB_PATH)
     return sqlite3.connect(DB_PATH)
 
 def init_db():
-    os.makedirs("data", exist_ok=True) 
+    os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True) 
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -26,7 +28,7 @@ def init_db():
     )    
     ''')
 
-    # ✅ Safe migrations
+    # Safe migrations
     try:
         cursor.execute("ALTER TABLE documents ADD COLUMN upload_date TEXT")
     except sqlite3.OperationalError:
@@ -44,6 +46,14 @@ def init_db():
         page_number INTEGER,
         timestamp TEXT
     )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS app_visits(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_type TEXT,
+        timestamp TEXT
+    )                          
     """)
 
     conn.commit()

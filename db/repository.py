@@ -69,4 +69,28 @@ class DocumentRepository:
         conn.close()
 
         return [Document(*row) for row in rows]
+    
+    def get_all_documents(self):
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        SELECT 
+            id,
+            name,
+            path,
+            thumbnail_path,
+            tags,
+            description,
+            upload_date,
+            lecture_date,
+            total_pages
+        FROM documents
+        """)
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        return [Document(*row) for row in rows]
+        
 

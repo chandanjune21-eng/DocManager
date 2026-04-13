@@ -6,7 +6,7 @@ class PDFReader:
         doc = pymupdf.open(pdf_path)
 
         folder_name = os.path.basename(pdf_path).replace(".pdf","")
-        output_dir = os.path.join("storage","pdfs",folder_name)
+        output_dir = os.path.join("storage","pdf",folder_name)
 
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)

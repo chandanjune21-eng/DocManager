@@ -1,10 +1,23 @@
 import streamlit as st
 import os
 import sys
+from dotenv import load_dotenv
+
+
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 sys.path.append(BASE_DIR)
+
+env_path = os.path.join(BASE_DIR, ".env")
+load_dotenv(env_path)
+
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+
+
+#st.write("ENV PATH:", env_path)
+#st.write("FILE EXISTS:", os.path.exists(env_path))
+#st.write("ADMIN PASSWORD LOADED:", ADMIN_PASSWORD)
 
 from db.database import init_db
 
@@ -20,6 +33,10 @@ if "current_page" not in st.session_state:
     st.session_state.current_page = 0
 
 
+if "last_recorded_page" not in st.session_state:
+    st.session_state.last_recorded_page = -1 
+
+
 
 if "search_results" not in st.session_state:
     st.session_state.search_results = []
@@ -27,6 +44,9 @@ if "search_results" not in st.session_state:
 
 if "reader_mode" not in st.session_state:
     st.session_state.reader_mode = False
+
+if "show_reset" not in st.session_state:
+    st.session_state.show_reset = False
 
 init_db()
 
@@ -39,6 +59,44 @@ st.title("Smart PDF Document Manager")
 
 st.divider()
 
+st.subheader("Admin Controls")
+
+if st.button("Clean Database"):
+    st.session_state.show_reset = True
+
+if st.session_state.show_reset:
+    password_input = st.text_input("Enter Admin password", type="password")
+
+    st.write("DEBUG:", ADMIN_PASSWORD)
+    st.write("INPUT:", password_input)
+
+    if st.button("Confirm Reset"):
+        if password_input == ADMIN_PASSWORD:
+            st.success("Access granted")
+        
+            import shutil
+            # Delete DB
+            if os.path.exists("data/documents.db"):
+                os.remove("data/documents.db")
+
+            # Delete storage
+            pdf_dir = os.path.join("storage","pdf")
+            thumbnail_dir = os.path.join("storage","Thumbnail")
+
+            shutil.rmtree(pdf_dir, ignore_errors=True)
+            shutil.rmtree(thumbnail_dir,ignore_errors=True)
+
+
+            os.makedirs(pdf_dir,exist_ok=True)
+            os.makedirs(thumbnail_dir,exist_ok=True)
+
+            st.success("System reset successfully. Reset app.")
+
+        else:
+            st.error("Incorrect Password")
+
+
+   
 tabs = st.tabs(["Upload","Search & View","Analytics"])
         
 
@@ -52,10 +110,12 @@ with tabs[0]:
 
 
     if st.button("Upload"):
+        
         if uploaded_file:
+            analytics.record_app_visit("upload_click")
             Service.upload_document( uploaded_file,tags,description,lecture_date)
-    else :
-        st.error("Please upload a file")
+        else :
+            st.error("Please upload a file")
 
 
 with tabs[1]:
@@ -71,6 +131,7 @@ with tabs[1]:
 
     #  SEARCH BUTTON
     if st.button("Search"):
+        analytics.record_app_visit("search_click")
         st.session_state.search_results = Service.search_document(
             tag=search_tag if search_tag else None,
             date=str(search_date) if search_date else None
@@ -99,8 +160,10 @@ with tabs[1]:
                     st.write(f"Lecture Date: {doc.lecture_date}")
 
                     if st.button("Open", key=f"open_{doc.id}"):
+                        analytics.record_app_visit("open_click")
                         st.session_state.selected_doc = doc
                         st.session_state.current_page = 0
+                        st.session_state.last_recorded_page = -1 
                         st.session_state.reader_mode = True
                         st.rerun()
 
@@ -134,11 +197,13 @@ if st.session_state.reader_mode and st.session_state.get("selected_doc"):
 
             with col1:
                 if st.button("Previous") and st.session_state.current_page > 0:
+                    analytics.record_app_visit("previ_click")
                     st.session_state.current_page -= 1
                     st.rerun()
 
             with col3:
                 if st.button("Next") and st.session_state.current_page < total_pages - 1:
+                    analytics.record_app_visit("next_click")
                     st.session_state.current_page += 1
                     st.rerun()
 
@@ -151,7 +216,9 @@ if st.session_state.reader_mode and st.session_state.get("selected_doc"):
             st.image(img_path, width="stretch")
 
             # record page visit analytics
-            analytics.record_page_visit(doc.id,st.session_state.current_page)
+            if st.session_state.current_page != st.session_state.last_recorded_page:
+                analytics.record_page_visit(doc.id, st.session_state.current_page)
+                st.session_state.last_recorded_page = st.session_state.current_page
 
             unique_pages = analytics.get_unique_page_viewed(doc.id)
             progress = (unique_pages / doc.total_pages) * 100 if doc.total_pages else 0
@@ -163,14 +230,76 @@ if st.session_state.reader_mode and st.session_state.get("selected_doc"):
 
             st.write(f"Progress: {progress:.2f}% ({unique_pages}/{doc.total_pages})")
             
+            
 
         else:
             st.error("No images found")
 
 
         if st.button("Closer Reader"):
+            analytics.record_app_visit("close_click")
             st.session_state.reader_mode = False
+            st.session_state.last_recorded_page = -1
+
+
+
 
 with tabs[2]:
-    pass
+    st.header("Analytics")
+
+
+    if st.button("Reset Analytics"):
+        analytics.reset_analytics()
+        st.success("Analytics reset successfully ")
+
+    st.subheader("App Usage")
+
+    app_data = analytics.get_app_visits()
+
+    import pandas as pd
+
+    df = pd.DataFrame(app_data,columns=["Event" , "Count"])
+
+    if df.empty:
+        st.info("No analytics data yet. Perform some action to get insights.")
+    else:
+        st.bar_chart(df.set_index("Event"))
+
+
+    st.subheader("Document Progress")
+
+    docs = Service.get_all_documents()
+
+    data = []
+
+    for doc in docs:
+        unique_pages= analytics.get_unique_page_viewed(doc.id)
+        progress = (unique_pages / doc.total_pages) * 100 if doc.total_pages else 0
+
+
+        data.append({
+            "Document": doc.name,
+            "Page Read" : unique_pages,
+            "Total Pages": doc.total_pages,
+            "Progress(%)": round(progress,2)
+        })
+
+    df_docs = pd.DataFrame(data)
+    st.dataframe(df_docs)
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
 

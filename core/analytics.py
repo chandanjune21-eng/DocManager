@@ -32,3 +32,51 @@ class AnalyticsServices:
 
         return result if result else 0
     
+
+    def record_app_visit(self,event_type):
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO app_visits(event_type,timestamp)
+            VALUES(?,?)
+            """,(event_type,datetime.now().isoformat()))
+        
+        conn.commit()
+        conn.close()
+
+
+    
+    def get_app_visits(self):
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        SELECT event_type,COUNT(*)
+        FROM app_visits
+        GROUP BY event_type
+        """)
+    
+        data = cursor.fetchall()
+
+
+        conn.commit()
+        #conn.close()
+        return data 
+    
+
+    def reset_analytics(self):
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM page_visits")
+        cursor.execute("DELETE FROM app_visits")
+
+        conn.commit()
+        conn.close()
+        
+    
+
+
+    
+                   
